@@ -55,6 +55,7 @@ def _already_running() -> bool:
     has one running.
     """
     probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         probe.bind(("0.0.0.0", core.PORT))
     except OSError:
@@ -79,13 +80,25 @@ def main():
                 return  # user cancelled on first run, nothing to do
             config.save(cfg)
 
-        tray_app = tray.TrayApp(cfg.peer_hostname, on_reconfigure=None, on_quit=None)
+        tray_app = tray.TrayApp(
+            cfg.peer_hostname, on_reconfigure=None, on_quit=None, sync_images=cfg.sync_images,
+        )
         reconfigure_requested = threading.Event()
         quit_requested = threading.Event()
         tray_app.on_reconfigure = lambda: (reconfigure_requested.set(), tray_app.stop())
         tray_app.on_quit = lambda: (quit_requested.set(), tray_app.stop())
 
-        sync = core.ClipSync(cfg.peer_ip, cfg.passphrase, on_status_change=tray_app.set_status)
+        sync = core.ClipSync(
+            cfg.peer_ip, cfg.passphrase, on_status_change=tray_app.set_status, sync_images=cfg.sync_images,
+        )
+
+        def _on_toggle_images(enabled: bool):
+            sync.sync_images = enabled
+            cfg.sync_images = enabled
+            config.save(cfg)
+
+        tray_app.on_toggle_images = _on_toggle_images
+
         sync.start()
 
         tray_app.run()  # blocks until tray_app.stop() is called

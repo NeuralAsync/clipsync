@@ -52,12 +52,14 @@ ICON_DISCONNECTED = _make_icon("#3b82c4", "#95a5a6")
 
 
 class TrayApp:
-    def __init__(self, peer_hostname: str, on_reconfigure, on_quit):
+    def __init__(self, peer_hostname: str, on_reconfigure, on_quit, sync_images: bool = False, on_toggle_images=None):
         _hide_dock_icon_on_macos()
         self.peer_hostname = peer_hostname
         self.on_reconfigure = on_reconfigure
         self.on_quit = on_quit
+        self.on_toggle_images = on_toggle_images or (lambda enabled: None)
         self.connected = False
+        self._sync_images = sync_images
         # Cached, not queried live: pystray re-evaluates `checked=` on every
         # WM_MENUSELECT (i.e. every time the mouse passes over the item, not
         # just on click). A live autostart.is_enabled() there means a
@@ -78,6 +80,11 @@ class TrayApp:
         items = [
             pystray.MenuItem(self._title(), None, enabled=False),
             pystray.MenuItem("Change peer / passphrase...", lambda: self.on_reconfigure()),
+            pystray.MenuItem(
+                "Sync images",
+                self._toggle_images,
+                checked=lambda item: self._sync_images,
+            ),
         ]
         if autostart.is_supported():
             items.append(
@@ -89,6 +96,11 @@ class TrayApp:
             )
         items.append(pystray.MenuItem("Quit", lambda: self.on_quit()))
         return pystray.Menu(*items)
+
+    def _toggle_images(self, icon, item):
+        self._sync_images = not self._sync_images
+        self.on_toggle_images(self._sync_images)
+        self.icon.menu = self._build_menu()
 
     def _toggle_autostart(self, icon, item):
         try:

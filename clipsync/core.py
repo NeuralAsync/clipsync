@@ -35,7 +35,7 @@ def derive_key(passphrase: str) -> bytes:
 
 
 class ClipSync:
-    def __init__(self, peer_ip: str, passphrase: str, on_status_change=None):
+    def __init__(self, peer_ip: str, passphrase: str, on_status_change=None, sync_images: bool = False):
         self.peer_ip = peer_ip
         self.box = SecretBox(derive_key(passphrase))
         self.last_clip = pyperclip.paste()
@@ -45,6 +45,7 @@ class ClipSync:
         self._server_socket = None
         self.on_status_change = on_status_change or (lambda connected: None)
         self._stop = threading.Event()
+        self.sync_images = sync_images  # plain bool assignment: fine without a lock, GIL covers it
 
     def encrypt(self, plaintext: bytes) -> bytes:
         return self.box.encrypt(plaintext, nacl_random(SecretBox.NONCE_SIZE))
@@ -82,6 +83,8 @@ class ClipSync:
 
     def _check_image(self) -> bool:
         """Returns True if the clipboard currently holds an image (handled or not)."""
+        if not self.sync_images:
+            return False
         img = clipboard_image.read_image()
         if img is None:
             return False
@@ -183,6 +186,9 @@ class ClipSync:
             pyperclip.copy(text)
             log.info("clipboard updated (%d chars)", len(text))
         elif tag == TYPE_IMAGE:
+            if not self.sync_images:
+                log.info("dropping incoming image (%d bytes) — image sync disabled locally", len(content))
+                return
             img = clipboard_image.png_bytes_to_image(content)
             clipboard_image.write_image(img)
             # Writing an image can round-trip through a lossy native format

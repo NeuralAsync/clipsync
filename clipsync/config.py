@@ -15,6 +15,7 @@ class Config:
     peer_ip: str
     peer_hostname: str
     passphrase: str
+    sync_images: bool = False
 
 
 def load() -> Config | None:
