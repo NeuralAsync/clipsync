@@ -2,7 +2,6 @@
 
 import logging
 import sys
-import threading
 
 import pystray
 from PIL import Image, ImageDraw
@@ -10,27 +9,6 @@ from PIL import Image, ImageDraw
 from . import autostart
 
 log = logging.getLogger("clipsync.tray")
-
-
-def _run_on_ui_thread(func):
-    """Runs func() on the thread AppKit actually accepts UI mutations from.
-
-    pystray's macOS backend (_darwin.py) mutates AppKit objects directly with
-    no thread marshaling of its own. Calling it from a background thread —
-    e.g. core.py's connection-maintenance thread reporting a status change —
-    is undefined in Cocoa: the change is silently dropped more often than
-    not, which is why the tray dot could stay gray after actually
-    reconnecting. PyObjCTools.AppHelper.callAfter hands the call to the main
-    run loop, which is the standard fix for this class of bug.
-    """
-    if sys.platform == "darwin":
-        try:
-            from PyObjCTools import AppHelper
-            AppHelper.callAfter(func)
-            return
-        except Exception as e:
-            log.warning("failed to marshal UI update to main thread: %s", e)
-    func()
 
 
 def _hide_dock_icon_on_macos():
@@ -136,22 +114,16 @@ class TrayApp:
 
     def set_status(self, connected: bool):
         self.connected = connected
-
-        def _apply():
-            self.icon.icon = ICON_CONNECTED if connected else ICON_DISCONNECTED
-            self.icon.title = self._title()
-            self.icon.menu = self._build_menu()
-
-        _run_on_ui_thread(_apply)
+        log.info("set_status(%s): setting icon to %s", connected, "CONNECTED" if connected else "DISCONNECTED")
+        self.icon.icon = ICON_CONNECTED if connected else ICON_DISCONNECTED
+        self.icon.title = self._title()
+        self.icon.menu = self._build_menu()
+        log.info("set_status(%s): done", connected)
 
     def set_peer(self, peer_hostname: str):
         self.peer_hostname = peer_hostname
-
-        def _apply():
-            self.icon.title = self._title()
-            self.icon.menu = self._build_menu()
-
-        _run_on_ui_thread(_apply)
+        self.icon.title = self._title()
+        self.icon.menu = self._build_menu()
 
     def run(self):
         self.icon.run()
