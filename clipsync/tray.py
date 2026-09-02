@@ -17,9 +17,16 @@ def _hide_dock_icon_on_macos():
         return
     try:
         from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
-        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+        app = NSApplication.sharedApplication()
+        app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+        # A pure-LSUIElement app launched from a .app bundle (double-click,
+        # Launchpad) can end up never fully attaching to the WindowServer —
+        # the process runs fine, but its NSStatusItem never actually renders
+        # in the menu bar. Explicitly activating once is the standard
+        # workaround for that class of bug.
+        app.activateIgnoringOtherApps_(True)
     except Exception as e:
-        log.warning("failed to hide Dock icon: %s", e)
+        log.warning("failed to hide Dock icon / activate: %s", e)
 
 
 def _make_icon(board_color: str, dot_color: str) -> Image.Image:
