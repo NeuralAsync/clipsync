@@ -42,6 +42,15 @@ This is the whole point of the project, so here's a concrete path through it. Th
 
 Everything else (`tray.py`, `setup_ui.py`, `autostart.py`, `app.py`) is UI, autostart registration, and process wiring — worth a skim, but none of it touches the network or your clipboard content directly.
 
+## Tests
+
+`tests/test_core.py` covers the part that matters most: key derivation, encrypt/decrypt round-tripping, wire-frame packing over a real socket, and applying a received update to the clipboard (including the specific echo-loop bug this project hit and fixed — see [Known limitations & quirks](#known-limitations--quirks)). It's not exhaustive coverage of the whole app, but it exercises the security-relevant code path end to end.
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
 ## How it works
 
 - Each machine runs the same app: a small TCP server (`core.py`) that listens on port `45123`, plus an outbound connection to the configured peer.
@@ -104,6 +113,7 @@ launcher.py             standalone entry point (used by shortcuts/autostart, not
 start_clipsync.sh        manually (re)starts the macOS LaunchAgent
 build_mac_launcher.sh    builds the macOS "Start ClipSync.app" launcher, with icon
 make_windows_shortcut.py builds the Windows Desktop/Start Menu shortcut, with icon
+tests/test_core.py       tests for the crypto and wire protocol — see Tests, above
 ```
 
 **Why `setup_ui.py` runs as a subprocess:** on macOS, Tk and the tray icon (pystray/AppKit) both want to own `NSApplication`. Running the setup dialog in-process while the tray icon is alive crashes with `unrecognized selector sent to NSApplication`. Running it as a separate process sidesteps this.
@@ -112,4 +122,4 @@ make_windows_shortcut.py builds the Windows Desktop/Start Menu shortcut, with ic
 
 ## Disclaimer
 
-This is a personal tool, built and audited by one person (with AI assistance) — not professionally security-reviewed, not penetration-tested, no bug bounty. It's built to be *readable*, which is a different (and more inspectable) property than *proven secure*, but it isn't a substitute for one. Read the code — that's the whole point — before trusting it with anything sensitive. No license file is included yet; treat it as all-rights-reserved until one is added.
+This is a personal tool, built and audited by one person (with AI assistance) — not professionally security-reviewed, not penetration-tested, no bug bounty. It's built to be *readable*, which is a different (and more inspectable) property than *proven secure*, but it isn't a substitute for one. Read the code — that's the whole point — before trusting it with anything sensitive. Licensed under MIT (see `LICENSE`).

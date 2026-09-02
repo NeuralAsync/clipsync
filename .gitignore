@@ -4,3 +4,4 @@ __pycache__/
 *.ico
 *.zip
 .DS_Store
+.pytest_cache/

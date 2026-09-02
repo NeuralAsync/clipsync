@@ -1,5 +1,5 @@
-pynacl
-pyperclip
-pystray
-pillow
-pywin32; sys_platform == "win32"
+pynacl>=1.5
+pyperclip>=1.9
+pystray>=0.19
+pillow>=10.0
+pywin32>=306; sys_platform == "win32"
